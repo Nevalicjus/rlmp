@@ -9,17 +9,17 @@ To uninstall, remove the `rlmp` exec from where it was put, and rm `.cache/rlmp/
 
 ### Usage
 ```
-Usage: rlmp [options] <place> [selected date]
+Usage: rlmp [options] [place] [selected date]
 
 Arguments:
-  <place>          Place to fetch weather for
+  [place]          Place to fetch weather for [default: approx. location]
   [selected date]  Starting date [default: 2026-04-28]
 
 Options:
-  -n, --namedays  Don't show namedays
-  -t, --tui       Don't show tui
-  -h, --help      Print help
-  -V, --version   Print version
+      --no-namedays  Don't show namedays
+      --no-tui       Don't show tui
+  -h, --help         Print help
+  -V, --version      Print version
 ```
 
 ### Credits

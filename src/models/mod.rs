@@ -1,9 +1,11 @@
-mod geocode;
 mod forecast;
-mod lonlat;
+mod geocode;
+mod latlon;
+mod lip;
 mod wikipedia;
 
-pub use geocode::*;
-pub use forecast::*;
-pub use lonlat::*;
-pub use wikipedia::*;
+pub use forecast::{ForecastRequest, ForecastResponse, Forecast};
+pub use geocode::{GeocodeItem, GeocodeRequest, GeocodeResponse};
+pub use latlon::Latlon;
+pub use lip::LocationInfo;
+pub use wikipedia::PageResponse;

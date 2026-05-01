@@ -13,7 +13,7 @@ use crate::{
     cache, models::{
         Forecast, ForecastRequest, ForecastResponse,
         GeocodeItem, GeocodeRequest, GeocodeResponse,
-        Lonlat
+        Latlon
     }, utils::{date_range, longest_runs}
 };
 use super::client::client;
@@ -38,27 +38,26 @@ pub async fn fetch_geocode(name: impl Into<String>) -> anyhow::Result<Arc<Vec<Ge
     return Ok(res);
 }
 
-pub async fn fetch_weather(geocode: GeocodeItem, date: NaiveDate) -> anyhow::Result<Arc<Forecast>> {
-    return Ok(_fetch_weather_ranged(geocode, date, date).await?
+pub async fn fetch_weather(latlon: Latlon, date: NaiveDate) -> anyhow::Result<Arc<Forecast>> {
+    return Ok(_fetch_weather_ranged(latlon, date, date).await?
         .get(&date).ok_or(anyhow!("Couldn't fetch weather"))?.clone());
 }
 
 pub async fn fetch_weather_range(
-    geocode: GeocodeItem, start_date: NaiveDate, end_date: NaiveDate
+    latlon: Latlon, start_date: NaiveDate, end_date: NaiveDate
 ) -> anyhow::Result<HashMap<NaiveDate, Arc<Forecast>>> {
-    return Ok(_fetch_weather_ranged(geocode, start_date, end_date).await?);
+    return Ok(_fetch_weather_ranged(latlon, start_date, end_date).await?);
 }
 
 async fn _fetch_weather_ranged(
-    geocode: GeocodeItem, start_date: NaiveDate, end_date: NaiveDate
+    latlon: Latlon, start_date: NaiveDate, end_date: NaiveDate
 ) -> anyhow::Result<HashMap<NaiveDate, Arc<Forecast>>> {
     if start_date != end_date {
         let uncached_days: Vec<NaiveDate> = {
             let cache = cache::Cache::global();
             let mut uncached_days: Vec<NaiveDate> = Vec::new();
-            let lonlat = Lonlat::new(geocode.latitude, geocode.longitude);
             for date in date_range(start_date, end_date) {
-                if let None = cache.weather_cache.get(&(lonlat, date)) {
+                if let None = cache.weather_cache.get(&(latlon, date)) {
                     uncached_days.push(date);
                 }
             }
@@ -67,7 +66,7 @@ async fn _fetch_weather_ranged(
         if uncached_days.len() != 0 {
             let uncached_runs = longest_runs(&uncached_days, |d1, d2| *d1 + TimeDelta::days(1) == *d2);
             for (start_date, end_date) in uncached_runs {
-                let _ = _weather(client(), geocode.clone(), start_date, end_date).await?;
+                let _ = _weather(client(), latlon.clone(), start_date, end_date).await?;
             }
         }
     }
@@ -75,28 +74,27 @@ async fn _fetch_weather_ranged(
     let mut ans: HashMap<NaiveDate, Arc<Forecast>> = HashMap::new();
 
     for date in date_range(start_date, end_date) {
-        ans.insert(date, _fetch_weather_cached(geocode.clone(), date).await?);
+        ans.insert(date, _fetch_weather_cached(latlon.clone(), date).await?);
     }
 
     return Ok(ans);
 }
 
-async fn _fetch_weather_cached(geocode: GeocodeItem, date: NaiveDate) -> anyhow::Result<Arc<Forecast>> {
-    let lonlat = Lonlat::new(geocode.latitude, geocode.longitude);
+async fn _fetch_weather_cached(latlon: Latlon, date: NaiveDate) -> anyhow::Result<Arc<Forecast>> {
     if let Some(x) = {
         let cache = cache::Cache::global();
-        cache.weather_cache.get(&(lonlat, date)).cloned()
+        cache.weather_cache.get(&(latlon, date)).cloned()
     } {
         return Ok(x);
     }
 
     let res = Arc::new(
-        _weather(client(), geocode, date, date).await?.to_forecasts()?
+        _weather(client(), latlon, date, date).await?.to_forecasts()?
         .get(&date).ok_or(anyhow!("Requested date not found in fetched"))?.clone()
     );
 
     let mut cache = cache::Cache::global();
-    cache.weather_cache.insert((lonlat, date), res.clone());
+    cache.weather_cache.insert((latlon, date), res.clone());
     return Ok(res);
 }
 
@@ -108,9 +106,9 @@ async fn _geocode(client: &Client, name: impl Into<String>) -> anyhow::Result<Ve
 }
 
 async fn _weather(
-    client: &Client, geocode: GeocodeItem, start: NaiveDate, end: NaiveDate
+    client: &Client, latlon: Latlon, start: NaiveDate, end: NaiveDate
 ) -> anyhow::Result<ForecastResponse> {
-    let fr = ForecastRequest::new(geocode.latitude, geocode.longitude, start, end);
+    let fr = ForecastRequest::new(latlon.lat, latlon.lon, start, end);
     let r = client.get(WEATHER_API_BASE)
         .query(&fr.as_query())
         .send().await?.error_for_status()?;

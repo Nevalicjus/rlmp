@@ -7,7 +7,7 @@ use anyhow::anyhow;
 use chrono::NaiveDate;
 use serde_json;
 
-use crate::models::{Lonlat, Forecast, GeocodeItem};
+use crate::models::{Latlon, Forecast, GeocodeItem};
 use super::persistent::PersistentCache;
 
 static CACHE_DIR: &'static str = ".cache/rlmp/";
@@ -21,7 +21,7 @@ static GLOBAL_CACHE: LazyLock<Mutex<Cache>> = LazyLock::new(|| {
 pub struct Cache {
     pub geocode_cache: HashMap<String, Arc<Vec<GeocodeItem>>>,
     pub name_cache: HashMap<(usize, usize), Arc<Vec<String>>>,
-    pub weather_cache: HashMap<(Lonlat, NaiveDate), Arc<Forecast>>
+    pub weather_cache: HashMap<(Latlon, NaiveDate), Arc<Forecast>>
 }
 
 impl Cache {

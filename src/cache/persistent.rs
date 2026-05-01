@@ -6,7 +6,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use chrono::NaiveDate;
 
-use crate::models::{GeocodeItem, Forecast, Lonlat};
+use crate::models::{GeocodeItem, Forecast, Latlon};
 use crate::cache::Cache;
 
 #[derive(Deserialize, Serialize)]
@@ -26,11 +26,11 @@ impl PersistentCache {
             let (month, day) = (parts[0].parse::<usize>()?, parts[1].parse::<usize>()?);
             name_cache.insert((month, day), Arc::new(names));
         }
-        let mut weather_cache: HashMap<(Lonlat, NaiveDate), Arc<Forecast>> = HashMap::new();
+        let mut weather_cache: HashMap<(Latlon, NaiveDate), Arc<Forecast>> = HashMap::new();
         for (key, forecast) in self.weather_cache {
             let parts = key.split(";").collect::<Vec<&str>>();
             let (lat, lon, date) = (parts[0].parse::<f32>()?, parts[1].parse::<f32>()?, parts[2].parse::<NaiveDate>()?);
-            weather_cache.insert((Lonlat { lat, lon }, date), Arc::new(forecast));
+            weather_cache.insert((Latlon { lat, lon }, date), Arc::new(forecast));
         }
 
         return Ok(Cache {
@@ -53,7 +53,7 @@ impl PersistentCache {
                 })
                 .collect::<HashMap<String, Vec<String>>>(),
             weather_cache: cache.weather_cache.iter()
-                .map(|((Lonlat { lat, lon }, date), forecast)| {
+                .map(|((Latlon { lat, lon }, date), forecast)| {
                     (format!("{};{};{}", lat, lon, date), (**forecast).clone())
                 })
                 .collect::<HashMap<String, Forecast>>()

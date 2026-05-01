@@ -6,20 +6,21 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::{WeekdayData, WeekdayState};
 use crate::{
-    fetch::{fetch_weather_range, fetch_geocode, fetch_weather, fetch_namedays},
+    fetch::{fetch_weather_range, fetch_weather, fetch_namedays},
+    models::LocationInfo,
     tui::event::{AppEvent, Event}, utils::date_range
 };
 
 #[derive(Debug)]
 pub struct State {
-    pub place: String,
+    pub loc: LocationInfo,
     pub weekday_data: HashMap<NaiveDate, WeekdayState>
 }
 
 impl State {
-    pub fn new(place: String) -> Self {
+    pub fn new(loc: LocationInfo) -> Self {
         return Self {
-            place: place,
+            loc: loc,
             weekday_data: HashMap::new()
         };
     }
@@ -32,14 +33,14 @@ impl State {
     }
 
     pub async fn update(self: &mut Self, send: UnboundedSender<Event>, start: NaiveDate, end: NaiveDate) -> anyhow::Result<()> {
-        let best_code = fetch_geocode(self.place.clone()).await?
-            .get(0).ok_or(anyhow!("Invalid geocodes amount"))?.clone();
+        if !self.loc.usable() { Err(anyhow!("Location data unusable"))? }
+        self.loc.try_geocode().await?;
 
         for date in date_range(start, end) {
-            let value = best_code.clone();
+            let latlon = self.loc.as_latlon()?;
             let send = send.clone();
             tokio::spawn(async move {
-                let forecast_res = fetch_weather(value.clone(), date).await;
+                let forecast_res = fetch_weather(latlon.clone(), date).await;
                 let namedays_res = fetch_namedays(date).await;
 
                 let event = match (forecast_res, namedays_res) {
@@ -70,14 +71,12 @@ impl State {
     }
 
     pub async fn warm_caches(self: &Self, date: NaiveDate) -> anyhow::Result<()> {
-        let place = self.place.clone();
+        let mut loc: LocationInfo = self.loc.clone();
         tokio::spawn(async move {
-            let geocodes = if let Ok(x) = fetch_geocode(place).await { x } else {
-                return;
-            };
-            let best_code = if let Some(x) = geocodes.get(0) { x.clone() } else { return };
+            if let Err(_) = loc.try_geocode().await { return; }
+            let latlon = if let Ok(latlon) = loc.as_latlon() { latlon } else { return; };
             let _ = fetch_weather_range(
-                best_code, date - TimeDelta::days(60), date + TimeDelta::days(14)
+                latlon, date - TimeDelta::days(60), date + TimeDelta::days(14)
             ).await;
         });
         return Ok(());

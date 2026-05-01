@@ -3,16 +3,16 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::DefaultTerminal;
 
 use crate::{
-    cache,
+    cache, models::LocationInfo,
     state::{State, WeekdayState},
     tui::widgets::{ChartType, InfoType},
-    utils::{today, start_of_week, end_of_week}
+    utils::{end_of_week, start_of_week, today}
 };
 use super::event::{AppEvent, Event, EventHandler};
 
-pub async fn run_app(place: String, selected_date: Option<NaiveDate>) -> anyhow::Result<()> {
+pub async fn run_app(loc: LocationInfo, selected_date: Option<NaiveDate>) -> anyhow::Result<()> {
     let terminal = ratatui::init();
-    let res = App::new(place, selected_date).run(terminal).await;
+    let res = App::new(loc, selected_date).run(terminal).await;
     ratatui::restore();
     return res;
 }
@@ -29,10 +29,10 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(place: String, selected_date: Option<NaiveDate>) -> Self {
+    pub fn new(loc: LocationInfo, selected_date: Option<NaiveDate>) -> Self {
         return Self {
             running: true,
-            state: State::new(place),
+            state: State::new(loc),
             events: EventHandler::new(),
 
             addt_info_type: InfoType::TempOverSun,

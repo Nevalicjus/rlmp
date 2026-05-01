@@ -14,7 +14,7 @@ impl App {
         let area = frame.area();
 
         let header = Text::from_iter([
-            Line::from(self.state.place.clone().bold()),
+            Line::from(self.state.loc.to_string().bold()),
             Line::from("<q> Quit | <→> Next Day | <←> Previous Day | <↑> Next Chart | <↓> Prev Chart | <Tab> Cycle addt. info"),
         ]);
 
